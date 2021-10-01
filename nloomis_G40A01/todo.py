@@ -4,16 +4,18 @@ task_list = {}
 
 
 class Task():
-    def __init__(self, task_id, desc, priority=None, project=None, action=None, completed=False):
+    def __init__(self, task_id, desc, priority=None, project=None, completed=False):
+        self.task_id = task_id
         self.desc = desc
         self.priority = priority
         self.project = project
-        self.task_id = task_id
-        self.action = action
         self.completed = completed
 
     def get_write_string(self):
         return f'{self.task_id}~{self.desc}~{self.completed}~{self.priority}~{self.project}'
+
+    def change_completed(self):
+        self.completed = not self.completed
 
     def __str__(self):
         return f'{self.desc} {self.priority} {self.project}'
@@ -60,21 +62,22 @@ def get_project(task):
 
 
 def add_to_list(str):
-    priority = get_priority(str)
-    project = get_project(str)
-    desc = get_desc(str)
-    id = get_new_task_id()
-    task_list[id] = Task(id, desc, priority, project)
+    task_list[id] = Task(get_new_task_id(), get_desc(str), get_priority(str), get_project(str))
 
 
 def get_task_id(task_str):
     return int(task_str[0])
 
 
-def print_list():
+def print_all():
+    print(f'\n{"Completed":^10}|{"Description":^45}|{"Priority":^15}|{"Project":^15}|\n')
+    print("-----------------------------------------------------------------------------------------")
     for key in task_list:
-        print(task_list.get(key))
+        print(f'{task_list[key].completed:^10}|{task_list[key].desc:^45}|{task_list[key].priority:^15}|{task_list[key].project:^15}|')
 
+def print_todo():
+    for key in task_list:
+        print(task_list[key])
 
 def write_to_file():
     out_file = open('tasks.txt', 'w')
@@ -90,12 +93,19 @@ def init_task_list():
     task_file = open('tasks.txt')
     tasks = {}
     for t in task_file.readlines():
-        id = t.split("~")[0]
-        desc = t.split("~")[1]
-        priority = t.split("~")[3]
-        project = t.split("~")[4]
-        tasks[id] = Task(id, desc, priority, project)
+        list_task = t.split("~")
+        id = list_task[0]
+        desc = list_task[1]
+        comp = list_task[2]
+        priority = list_task[3]
+        project = list_task[4].strip('\n')
+        tasks[id] = Task(id, desc, priority, project, completed=comp)
     return tasks
+
+def change_completion_status(task_num_to_update):
+    found_task = task_list[task_num_to_update]
+    found_task.change_completed()
+
 
 
 def prompt_add():
@@ -115,8 +125,14 @@ if __name__ == "__main__":
             else:
                 prompt_add()
         elif action == "list":
-            print_list()
+            if line[1].strip().lower() == 'all':
+                print_all()
+            elif line[1].strip().lower() == 'todo':
+                print_todo()
+            else:
+                raise Exception("Can only list of type 'all' or 'todo'")
         elif action == 'done':
-            write_to_file()
-            break
-        
+            if len(line) > 1:
+                change_completion_status(line[1])
+                break
+    write_to_file()
