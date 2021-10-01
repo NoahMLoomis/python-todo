@@ -21,6 +21,8 @@ class Task():
 
 
 def get_new_task_id():
+    if len(list(task_list)) < 1:
+        return 1
     return int(list(task_list)[-1]) + 1
 
 
@@ -67,7 +69,7 @@ def add_to_list(str):
 
 
 def get_task_id(task_str):
-    return task_str[0]
+    return int(task_str[0])
 
 
 def print_list():
@@ -75,13 +77,14 @@ def print_list():
 
 
 def write_to_file():
-    print(task_list)
-    open('tasks.txt', 'w').close()
-    out_file = open('tasks.txt', 'a')
+    out_file = open('tasks.txt', 'w')
     for task in task_list:
-        print(task_list.get(task))
         out_str = task_list.get(task).get_write_string()
-        out_file.write(out_str)
+        if list(task_list)[-1] == task:
+            out_file.write('\n' + out_str)
+        else:
+            out_file.write(out_str)
+
 
 def init_task_list():
     task_file = open('tasks.txt')
