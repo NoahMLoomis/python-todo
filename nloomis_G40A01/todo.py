@@ -1,5 +1,4 @@
 import sys
-import random as rand
 
 task_list = {}
 
@@ -73,14 +72,15 @@ def get_task_id(task_str):
 
 
 def print_list():
-    print(task_list)
+    for key in task_list:
+        print(task_list.get(key))
 
 
 def write_to_file():
     out_file = open('tasks.txt', 'w')
-    for task in task_list:
-        out_str = task_list.get(task).get_write_string()
-        if list(task_list)[-1] == task:
+    for key in task_list:
+        out_str = task_list.get(key).get_write_string()
+        if list(task_list)[-1] == key:
             out_file.write('\n' + out_str)
         else:
             out_file.write(out_str)
@@ -98,16 +98,25 @@ def init_task_list():
     return tasks
 
 
+def prompt_add():
+    print("Prompt for all the needed info")
+
 if __name__ == "__main__":
     task_list = init_task_list()
-    line = input("""
-          TODO LIST
-    Please enter a command      
-          to start: """).split()
-    action = val_action(line[0].strip())
-    if action == "add":
-        add_to_list(line[1:])
-    elif action == "list":
-        print_list()
-
-    write_to_file()
+    print("""
+          ------------TODO LIST------------
+          """)
+    while True:
+        line = input("Please enter a command to start: ").split()
+        action = val_action(line[0].strip()).lower()
+        if action == "add":
+            if len(line) > 1:
+                add_to_list(line[1:])
+            else:
+                prompt_add()
+        elif action == "list":
+            print_list()
+        elif action == 'done':
+            write_to_file()
+            break
+        
