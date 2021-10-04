@@ -1,4 +1,6 @@
 import sys
+import exceptions as e
+
 
 task_list = {}
 
@@ -36,7 +38,7 @@ def val_action(action):
 def get_priority(task):
     for word in task:
         if word[0] == '!':
-            return word
+            return word[1:]
     return None
 
 
@@ -57,7 +59,7 @@ def get_action(task):
 def get_project(task):
     for word in task:
         if word[0] == '#':
-            return word
+            return word[1:]
     return None
 
 
@@ -68,25 +70,44 @@ def add_to_list(str):
 def get_task_id(task_str):
     return int(task_str[0])
 
+def print_header():
+    print(f'\n{"Completed":^10}|{"Description":^45}|{"Priority":^15}|{"Project":^15}|')
+    print("-----------------------------------------------------------------------------------------")
 
 def print_all():
-    print(f'\n{"Completed":^10}|{"Description":^45}|{"Priority":^15}|{"Project":^15}|\n')
-    print("-----------------------------------------------------------------------------------------")
     for key in task_list:
         print(f'{task_list[key].completed:^10}|{task_list[key].desc:^45}|{task_list[key].priority:^15}|{task_list[key].project:^15}|')
 
 def print_todo():
-    for key in task_list:
-        print(task_list[key])
+    for task in get_todo_sorted_by_priority():
+        print(f'{task[1].completed:^10}|{task[1].desc:^45}|{task[1].priority:^15}|{task[1].project:^15}|')
+
+
+def get_task_id(task_id):
+    if task_id in task_list:
+        return task_id
+    raise e.TaskNotFoundException(f'No task was found with task_id: {task_id}')
+
+# TODO Delete the task from the task_list
+def rem_task(task_id):
+    try:
+        found_task_id = get_task_id(task_id)
+        del task_list[found_task_id]
+    except e.TaskNotFoundException as msg:
+        print(msg)
+        
+        
+def get_todo_sorted_by_priority():
+    return sorted({key: task_list[key] for key in task_list if task_list[key].completed == 'False'}.items(), key=lambda s: s[1].priority)
 
 def write_to_file():
     out_file = open('tasks.txt', 'w')
     for key in task_list:
         out_str = task_list.get(key).get_write_string()
-        if list(task_list)[-1] == key:
-            out_file.write('\n' + out_str)
-        else:
+        if list(task_list)[0] == key:
             out_file.write(out_str)
+        else:
+            out_file.write(f'\n{out_str}')
 
 
 def init_task_list():
@@ -102,9 +123,12 @@ def init_task_list():
         tasks[id] = Task(id, desc, priority, project, completed=comp)
     return tasks
 
-def change_completion_status(task_num_to_update):
-    found_task = task_list[task_num_to_update]
-    found_task.change_completed()
+def change_completion_status(task_id):
+    try:
+        found_task_id = get_task_id(task_id)
+        task_list[found_task_id].change_completed()
+    except e.TaskNotFoundException as msg:
+        print(msg)
 
 
 
@@ -126,8 +150,10 @@ if __name__ == "__main__":
                 prompt_add()
         elif action == "list":
             if line[1].strip().lower() == 'all':
+                print_header()
                 print_all()
             elif line[1].strip().lower() == 'todo':
+                print_header()
                 print_todo()
             else:
                 raise Exception("Can only list of type 'all' or 'todo'")
@@ -135,4 +161,6 @@ if __name__ == "__main__":
             if len(line) > 1:
                 change_completion_status(line[1])
                 break
+        elif action == 'rem':
+            rem_task(line[1])
     write_to_file()
