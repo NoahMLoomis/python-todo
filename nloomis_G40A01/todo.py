@@ -22,7 +22,7 @@ class Task():
 
     def __str__(self):
         return f'{self.desc} {self.priority} {self.project}'
-    
+
     def upd_desc(self, new_desc):
         self.desc = new_desc
 
@@ -44,13 +44,6 @@ def get_task_id(task_id):
     raise e.TaskNotFoundException(f'No task was found with task_id: {task_id}')
 
 
-def get_priority(task):
-    for word in task:
-        if word[0] == '!':
-            return word[1:]
-    return None
-
-
 def get_desc(task):
     desc = ""
     for word in task:
@@ -64,10 +57,17 @@ def get_action(task):
         if not word[0].isnumeric():
             return word
 
-
+#TODO Error checking here for multiple
 def get_project(task):
     for word in task:
         if word[0] == '#':
+            return word[1:]
+    return None
+
+#TODO Error checking here for multiple
+def get_priority(task):
+    for word in task:
+        if word[0] == '!':
             return word[1:]
     return None
 
@@ -77,10 +77,10 @@ def get_todo_sorted_by_priority():
 
 
 def val_action(action):
-    if action == "add" or action == "udp" or action == "rem" or action == "done" or action == "list" or action == "purge":
+    if action == "add" or action == "upd" or action == "rem" or action == "done" or action == "list" or action == "purge":
         return action
     raise e.InvalidActionException(
-        "Invalid action. Action can be add, udp, rem, done, list or purge")
+        "Invalid action. Action can be add, upd, rem, done, list or purge")
 
 
 def val_list_type(list_type):
@@ -119,13 +119,22 @@ def rem_task(task_id):
         print(f'Task removed with the task_id of {task_id}')
     except e.TaskNotFoundException as msg:
         print(msg)
-        
-def upd_task(task_id, new_desc):
+
+
+def upd_task(task_id, changes):
     try:
         found_task_id = get_task_id(task_id)
-        
+        new_priority = get_priority(changes) if get_priority(changes) != None else task_list[found_task_id].priority
+        new_project = get_project(changes) if get_project(changes) != None else task_list[found_task_id].project
+
+        task_list[found_task_id] = Task(found_task_id, get_desc(changes), new_priority, new_project, task_list[found_task_id].completed)
     except e.TaskNotFoundException as msg:
         print(msg)
+
+def purge_task_list():
+    for key in task_list:
+        if task_list[key].completed == "True":
+            del task_list[key]
 
 
 def write_to_file():
@@ -192,6 +201,8 @@ if __name__ == "__main__":
                 rem_task(line[1])
             elif action == 'upd':
                 upd_task(line[1], line[2:])
+            elif action == "purge":
+                purge_task_list()
 
         except KeyboardInterrupt:
             write_to_file()
