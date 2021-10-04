@@ -121,7 +121,11 @@ def rem_task(task_id):
         print(msg)
         
 def upd_task(task_id, new_desc):
-    
+    try:
+        found_task_id = get_task_id(task_id)
+        
+    except e.TaskNotFoundException as msg:
+        print(msg)
 
 
 def write_to_file():
