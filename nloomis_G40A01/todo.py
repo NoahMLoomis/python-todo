@@ -1,5 +1,7 @@
-import sys, os
-import exceptions as e, command_line as cmd
+import sys
+import os
+import exceptions as e
+import command_line as cmd
 from colorama import init, Fore
 
 
@@ -38,7 +40,16 @@ def get_new_task_id():
 def verify_task_id(task_id):
     if task_id in task_list:
         return task_id
-    raise e.TaskNotFoundException(f'{Fore.RED}No task was found with task_id: {task_id}')
+    raise e.TaskNotFoundException(
+        f'{Fore.RED}No task was found with task_id: {task_id}')
+
+
+def get_line():
+    if len(sys.argv) > 1:
+        line = sys.argv[1:]
+    else:
+        line = input("Please enter a command: ").split()
+    return line
 
 
 def get_desc(task):
@@ -65,10 +76,14 @@ def get_project(task):
 def get_priority(task):
     for word in task:
         if word[0] == '!':
-            if int(word[1]) < 1 or int(word[1]) > 4:
-                raise e.InvalidInputException(
-                    "Priority cannot be less than 0 or greater than 4")
-            return word[1]
+            try:
+                if int(word[1]) < 1 or int(word[1]) > 4:
+                    raise e.InvalidInputException(
+                        "Priority cannot be less than 0 or greater than 4")
+                return word[1]
+            except ValueError:
+                print(f'{Fore.RED}Priority must be an int')
+                raise e.TerminateProgramException
     return None
 
 
@@ -92,7 +107,13 @@ def val_list_type(list_type):
 def val_line_format(input):
     project_count = 0
     priority_count = 0
+    if get_desc(input) == "":
+        raise e.InvalidInputException("You must enter a description")
+
     for w, word in enumerate(input):
+        if word[0] == "~":
+            raise e.InvalidInputException(
+                "Cannot include '~'")
         if word[0] == "!":
             priority_count += 1
         if word[0] == '#':
@@ -199,15 +220,13 @@ if __name__ == "__main__":
     print("To exit, enter q or control-C")
     while True:
         try:
-            if len(sys.argv) > 1:
-                line = sys.argv[1:]
-            else:
-                line = input("Please enter a command: ").split()
+            line = get_line()
 
             if line[0].strip().lower() == 'q':
                 raise e.TerminateProgramException
 
             action = val_action(line[0].strip().lower())
+
             if len(line) == 1 and action != 'purge':
                 line = cmd.cmd_prompt(action)
 
