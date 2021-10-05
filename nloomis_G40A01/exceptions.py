@@ -4,5 +4,11 @@ class TaskNotFoundException(BaseException):
 class InvalidActionException(BaseException):
     pass
 
+class InvalidInputException(BaseException):
+    pass
+
 class InvalidListTypeException(BaseException):
+    pass
+
+class TerminateProgramException(BaseException):
     pass

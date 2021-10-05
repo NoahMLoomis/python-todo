@@ -1,6 +1,6 @@
-import sys
-import os
-import exceptions as e
+import sys, os
+import exceptions as e, command_line as cmd
+from colorama import init, Fore
 
 
 task_list = {}
@@ -18,13 +18,10 @@ class Task():
         return f'{self.task_id}~{self.desc}~{self.completed}~{self.priority}~{self.project}'
 
     def change_completed(self):
-        self.completed = not self.completed
+        self.completed = True
 
     def __str__(self):
         return f'{self.desc} {self.priority} {self.project}'
-
-    def upd_desc(self, new_desc):
-        self.desc = new_desc
 
 
 def ensure_created_file():
@@ -35,13 +32,13 @@ def ensure_created_file():
 def get_new_task_id():
     if len(list(task_list)) < 1:
         return 1
-    return int(list(task_list)[-1]) + 1
+    return int(list(task_list.keys())[-1]) + 1
 
 
-def get_task_id(task_id):
+def verify_task_id(task_id):
     if task_id in task_list:
         return task_id
-    raise e.TaskNotFoundException(f'No task was found with task_id: {task_id}')
+    raise e.TaskNotFoundException(f'{Fore.RED}No task was found with task_id: {task_id}')
 
 
 def get_desc(task):
@@ -57,18 +54,21 @@ def get_action(task):
         if not word[0].isnumeric():
             return word
 
-#TODO Error checking here for multiple
+
 def get_project(task):
     for word in task:
         if word[0] == '#':
             return word[1:]
     return None
 
-#TODO Error checking here for multiple
+
 def get_priority(task):
     for word in task:
         if word[0] == '!':
-            return word[1:]
+            if int(word[1]) < 1 or int(word[1]) > 4:
+                raise e.InvalidInputException(
+                    "Priority cannot be less than 0 or greater than 4")
+            return word[1]
     return None
 
 
@@ -84,57 +84,87 @@ def val_action(action):
 
 
 def val_list_type(list_type):
-    if len(list_type) < 1 or list_type != "all" or list_type != "todo":
+    if len(list_type) > 1 or list_type[0] != "all" and list_type[0] != "todo":
         raise e.InvalidListTypeException(
             "Can only list of type 'all' or 'todo'")
 
 
+def val_line_format(input):
+    project_count = 0
+    priority_count = 0
+    for w, word in enumerate(input):
+        if word[0] == "!":
+            priority_count += 1
+        if word[0] == '#':
+            project_count += 1
+            if len(input)-1 > w:
+                raise e.InvalidInputException(
+                    "Invalid input, the input must be [action] [description] -optional ![priority] -optional #[project]")
+    if project_count > 1 or priority_count > 1:
+        raise e.InvalidInputException(
+            "There can only be one project, and one priority. Both are optional")
+
+
 def print_header():
     print(
-        f'\n{"Completed":^10}|{"Description":^45}|{"Priority":^15}|{"Project":^15}|')
-    print("-----------------------------------------------------------------------------------------")
+        f'\n{"Completed":^10}|{"Description":^80}|{"Priority":^15}|{"Project":^15}|')
+    print("----------------------------------------------------------------------------------------------------------------------------")
 
 
 def print_all():
     for key in task_list:
         print(
-            f'{task_list[key].completed:^10}|{task_list[key].desc:^45}|{task_list[key].priority:^15}|{task_list[key].project:^15}|')
+            f'{task_list[key].completed:^10}|{task_list[key].desc:^80}|{task_list[key].priority:^15}|{task_list[key].project:^15}|')
 
 
 def print_todo():
     for task in get_todo_sorted_by_priority():
         print(
-            f'{task[1].completed:^10}|{task[1].desc:^45}|{task[1].priority:^15}|{task[1].project:^15}|')
+            f'{task[1].completed:^10}|{task[1].desc:^80}|{task[1].priority:^15}|{task[1].project:^15}|')
 
 
-def add_task(str):
-    task_list[id] = Task(get_new_task_id(), get_desc(
-        str), get_priority(str), get_project(str))
+def add_task(input):
+    id = get_new_task_id()
+    task_list[id] = Task(id, get_desc(
+        input), get_priority(input), get_project(input))
+    print(f'{Fore.GREEN}New Task with task_id {id} added')
 
 
 def rem_task(task_id):
     try:
-        found_task_id = get_task_id(task_id)
+        found_task_id = verify_task_id(task_id)
         del task_list[found_task_id]
-        print(f'Task removed with the task_id of {task_id}')
+        print(f'{Fore.GREEN}Task removed with the task_id of {task_id}')
     except e.TaskNotFoundException as msg:
         print(msg)
 
 
 def upd_task(task_id, changes):
     try:
-        found_task_id = get_task_id(task_id)
-        new_priority = get_priority(changes) if get_priority(changes) != None else task_list[found_task_id].priority
-        new_project = get_project(changes) if get_project(changes) != None else task_list[found_task_id].project
+        found_task_id = verify_task_id(task_id)
+        new_priority = get_priority(changes) if get_priority(
+            changes) != None else task_list[found_task_id].priority
+        new_project = get_project(changes) if get_project(
+            changes) != None else task_list[found_task_id].project
 
-        task_list[found_task_id] = Task(found_task_id, get_desc(changes), new_priority, new_project, task_list[found_task_id].completed)
+        task_list[found_task_id] = Task(found_task_id, get_desc(
+            changes), new_priority, new_project, task_list[found_task_id].completed)
     except e.TaskNotFoundException as msg:
         print(msg)
 
+
 def purge_task_list():
-    for key in task_list:
+    for key in list(task_list):
         if task_list[key].completed == "True":
-            del task_list[key]
+            task_list.pop(key)
+
+
+def change_completion_status(task_id):
+    try:
+        found_task_id = verify_task_id(task_id)
+        task_list[found_task_id].change_completed()
+    except e.TaskNotFoundException as msg:
+        print(msg)
 
 
 def write_to_file():
@@ -161,32 +191,30 @@ def init_task_list():
     return tasks
 
 
-def change_completion_status(task_id):
-    try:
-        found_task_id = get_task_id(task_id)
-        task_list[found_task_id].change_completed()
-    except e.TaskNotFoundException as msg:
-        print(msg)
-
-
-def prompt_add():
-    print("Prompt for all the needed info")
-
-
 if __name__ == "__main__":
+    init(autoreset=True)
     ensure_created_file()
     task_list = init_task_list()
     print("\n------------TODO LIST------------\n")
+    print("To exit, enter q or control-C")
     while True:
         try:
-            line = input("Please enter a command to start: ").split()
-            action = val_action(line[0].strip()).lower()
+            if len(sys.argv) > 1:
+                line = sys.argv[1:]
+            else:
+                line = input("Please enter a command: ").split()
+
+            if line[0].strip().lower() == 'q':
+                raise e.TerminateProgramException
+
+            action = val_action(line[0].strip().lower())
+            if len(line) == 1 and action != 'purge':
+                line = cmd.cmd_prompt(action)
+
+            val_line_format(line[1:])
 
             if action == "add":
-                if len(line) > 1:
-                    add_task(line[1:])
-                else:
-                    prompt_add()
+                add_task(line[1:])
             elif action == "list":
                 val_list_type(line[1:])
                 print_header()
@@ -195,8 +223,7 @@ if __name__ == "__main__":
                 elif line[1].strip().lower() == 'todo':
                     print_todo()
             elif action == 'done':
-                if len(line) > 1:
-                    change_completion_status(line[1])
+                change_completion_status(line[1])
             elif action == 'rem':
                 rem_task(line[1])
             elif action == 'upd':
@@ -204,9 +231,15 @@ if __name__ == "__main__":
             elif action == "purge":
                 purge_task_list()
 
-        except KeyboardInterrupt:
+            if len(sys.argv) > 1:
+                raise e.TerminateProgramException
+
+        except (e.InvalidActionException, e.InvalidListTypeException, e.InvalidInputException) as msg:
+            print(f'{Fore.RED}{msg}')
+            if len(sys.argv) > 1:
+                break
+
+        except (KeyboardInterrupt, e.TerminateProgramException):
             write_to_file()
-            print("\nExiting to-do list...")
+            print("\nExiting to-do App...")
             break
-        except (e.InvalidActionException, e.InvalidListTypeException) as msg:
-            print(msg)
